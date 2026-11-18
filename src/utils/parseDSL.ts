@@ -70,6 +70,12 @@ export const DSL_SCHEMA: Record<string, { pipeCount: number; fields: string[] }>
     'question-card':     { pipeCount: 4, fields: ['question','options','hint','field'] },
     'info-card':         { pipeCount: 5, fields: ['icon','title','body','cta','ctaPhrase'] },
     'country-card':      { pipeCount: 7, fields: ['country','flag','revenue','employees','politicalRisk','relationshipHealth','keyContact'] },
+    // Counselor cards (ported from Venkat's build). Drawn by the counselor site functions from the
+    // caseload record, never written by the model. Inner lists use `^` and `;`; `%3B`/`%5E` inside a value.
+    'caseload-list':     { pipeCount: 4, fields: ['flagged','total','onTrack','rows (semicolon-separated `id^name^year^score^band^headline^canText^status` rows)'] },
+    'student-brief':     { pipeCount: 13, fields: ['name','firstName','year','major','campus','score','band','signals (semicolon-separated `kind^text` rows)','nextStep','canText (1|0)','languageNote','queuedRef','proposedSlot'] },
+    'outreach-plan':     { pipeCount: 9, fields: ['name','firstName','channel (text|email)','canText (1|0)','languageNote','subject','body (newlines as a literal backslash-n)','status (draft|queued)','reference'] },
+    'slot-picker':       { pipeCount: 4, fields: ['name','firstName','slots (semicolon-separated YYYY-MM-DDTHH:MM)','proposedSlot'] },
     // Container headers
     'kpi-strip':         { pipeCount: 0, fields: [] },
     'metric-list':       { pipeCount: 1, fields: ['title'] },
@@ -166,6 +172,7 @@ const FLAT_TYPES        = new Set([
     'stat', 'callout', 'person-card', 'relationship-card',
     'incident-card', 'info-card', 'country-card', 'image-card',
     'incident-draft', 'kb-suggestion', 'resolve-page', 'question-card',
+    'caseload-list', 'student-brief', 'outreach-plan', 'slot-picker',
 ]);
 
 // ── Item parsers ──────────────────────────────────────────────────────────────
@@ -417,6 +424,22 @@ function parseFlatCard(type: string, fields: string[], span?: 'full'): CardDef |
         case 'image-card': {
             const [imageUrl, caption, subtitle] = fields;
             return Object.assign(card, { imageUrl: n(imageUrl), caption: n(caption), subtitle: n(subtitle) });
+        }
+        case 'caseload-list': {
+            const [flagged, total, onTrack, rows] = fields;
+            return Object.assign(card, { flagged: n(flagged), total: n(total), onTrack: n(onTrack), rows: n(rows) });
+        }
+        case 'student-brief': {
+            const [name, firstName, year, major, campus, score, band, signals, nextStep, canText, languageNote, queuedRef, proposedSlot] = fields;
+            return Object.assign(card, { name: n(name) ?? '', firstName: n(firstName), year: n(year), major: n(major), campus: n(campus), score: n(score), band: n(band), signals: n(signals), nextStep: n(nextStep), canText: n(canText), languageNote: n(languageNote), queuedRef: n(queuedRef), proposedSlot: n(proposedSlot) });
+        }
+        case 'outreach-plan': {
+            const [name, firstName, channel, canText, languageNote, subject, body, status, reference] = fields;
+            return Object.assign(card, { name: n(name) ?? '', firstName: n(firstName), channel: n(channel), canText: n(canText), languageNote: n(languageNote), subject: n(subject), body: n(body), status: n(status), reference: n(reference) });
+        }
+        case 'slot-picker': {
+            const [name, firstName, slots, proposedSlot] = fields;
+            return Object.assign(card, { name: n(name), firstName: n(firstName), slots: n(slots), proposedSlot: n(proposedSlot) });
         }
         default:
             return null;

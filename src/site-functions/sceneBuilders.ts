@@ -185,6 +185,104 @@ export function buildResolvePage(fields: ResolvePageFields): string {
     return `resolve-page|${f(fields.problemTitle)}|${f(fields.detectedCategory)}|${f(fields.detectedDevice)}|${f(fields.helperText)}|${f(sourcesStr)}|${f(resultsStr)}`;
 }
 
+// ── Counselor cards (ported from Venkat's build) ───────────────────────────
+// Drawn only by the counselor site functions (getCaseload, getStudentRisk,
+// planOutreach, findMeetingSlots, contactStudent). Each is ONE flat row; lists
+// inside a field use `^` between columns and `;` between rows. `inner()` keeps
+// a value from breaking that grammar: `;` and `^` are encoded as %3B / %5E (the
+// card decodes them, so a signal keeps its exact punctuation) and `|` becomes `/`.
+function inner(v: unknown): string {
+    return String(v ?? '')
+        .replace(/%/g, '%25')
+        .replace(/;/g, '%3B')
+        .replace(/\^/g, '%5E')
+        .replace(/\|/g, '/')
+        .replace(/\r?\n/g, ' ')
+        .trim();
+}
+
+/** A written message with paragraphs: newlines travel as the two characters `\n`. */
+function multi(v: unknown): string {
+    const s = String(v ?? '').trim();
+    if (!s) return EMPTY;
+    return s.replace(/\|/g, '/').replace(/\r?\n/g, '\\n');
+}
+
+export interface CaseloadRowFields {
+    id: string;
+    name: string;
+    year: string;
+    score: number;
+    band: string;
+    headline: string;
+    canText: boolean;
+    /** '', 'queued', 'proposed' or 'queued,proposed' */
+    status?: string;
+}
+export interface CaseloadListFields {
+    flagged: number;
+    total: number;
+    onTrack: number;
+    rows: CaseloadRowFields[];
+}
+export function buildCaseloadList(fields: CaseloadListFields): string {
+    const rows = (fields.rows ?? [])
+        .map((r) =>
+            [inner(r.id), inner(r.name), inner(r.year), inner(r.score), inner(r.band), inner(r.headline), r.canText ? '1' : '0', inner(r.status)].join('^'),
+        )
+        .join(';');
+    return `caseload-list|${f(fields.flagged)}|${f(fields.total)}|${f(fields.onTrack)}|${f(rows)}`;
+}
+
+export interface StudentBriefFields {
+    name: string;
+    firstName: string;
+    year: string;
+    major: string;
+    campus: string;
+    score: number;
+    band: string;
+    signals: Array<{ kind: string; text: string }>;
+    nextStep: string;
+    canText: boolean;
+    languageNote?: string;
+    queuedRef?: string;
+    proposedSlot?: string;
+}
+export function buildStudentBrief(fields: StudentBriefFields): string {
+    const signals = (fields.signals ?? []).map((s) => `${inner(s.kind)}^${inner(s.text)}`).join(';');
+    return `student-brief|${f(fields.name)}|${f(fields.firstName)}|${f(fields.year)}|${f(fields.major)}|${f(fields.campus)}|${f(fields.score)}|${f(fields.band)}|${f(signals)}|${f(fields.nextStep)}|${fields.canText ? '1' : '0'}|${f(fields.languageNote)}|${f(fields.queuedRef)}|${f(fields.proposedSlot)}`;
+}
+
+export interface OutreachPlanFields {
+    name: string;
+    firstName: string;
+    /** 'text' | 'email' */
+    channel: string;
+    canText: boolean;
+    languageNote?: string;
+    subject?: string;
+    body: string;
+    /** 'draft' | 'queued' */
+    status: string;
+    reference?: string;
+}
+export function buildOutreachPlan(fields: OutreachPlanFields): string {
+    return `outreach-plan|${f(fields.name)}|${f(fields.firstName)}|${f(fields.channel)}|${fields.canText ? '1' : '0'}|${f(fields.languageNote)}|${f(fields.subject)}|${multi(fields.body)}|${f(fields.status)}|${f(fields.reference)}`;
+}
+
+export interface SlotPickerFields {
+    name?: string;
+    firstName?: string;
+    /** Slot ids, `YYYY-MM-DDTHH:MM`. */
+    slots: string[];
+    proposedSlot?: string;
+}
+export function buildSlotPicker(fields: SlotPickerFields): string {
+    const slots = (fields.slots ?? []).map(inner).filter(Boolean).join(';');
+    return `slot-picker|${f(fields.name)}|${f(fields.firstName)}|${f(slots)}|${f(fields.proposedSlot)}`;
+}
+
 // ── Template registry ───────────────────────────────────────────────────────
 
 export type TemplateName =
@@ -193,7 +291,11 @@ export type TemplateName =
     | 'incident-card'
     | 'info-card'
     | 'kb-suggestion'
-    | 'resolve-page';
+    | 'resolve-page'
+    | 'caseload-list'
+    | 'student-brief'
+    | 'outreach-plan'
+    | 'slot-picker';
 
 export const TEMPLATE_BUILDERS: Record<TemplateName, (fields: any) => string> = {
     'question-card': buildQuestionCard,
@@ -202,6 +304,10 @@ export const TEMPLATE_BUILDERS: Record<TemplateName, (fields: any) => string> = 
     'info-card': buildInfoCard,
     'kb-suggestion': buildKbSuggestion,
     'resolve-page': buildResolvePage,
+    'caseload-list': buildCaseloadList,
+    'student-brief': buildStudentBrief,
+    'outreach-plan': buildOutreachPlan,
+    'slot-picker': buildSlotPicker,
 };
 
 /** Wrap one or more rows + optional badge/layout into a parseable DSL block. */

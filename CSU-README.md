@@ -1,6 +1,6 @@
-# CSU Student Engagement Platform: advisor site (Natalie)
+# Academic Counselor (CSU demo): advisor site (Natalie)
 
-The front end of the CSU Student Engagement Platform advisor Tele ("Natalie", for academic advisors) on the Mobeus platform; the twin of the student site `csu-navigator-site` (Val). It has the same look and layout as the Henkel
+The front end of the Academic Counselor Tele ("Natalie", for academic advisors) on the Mobeus platform; the twin of the student site `csu-navigator-site` (Val). It has the same look and layout as the Henkel
 DX Tele (Unisys build v0.8.2): sign-in page, data privacy notice, welcome page with quick actions, avatar column on
 the right with the connection timer and AI disclaimer, and cards on the left. The colours are CSU's.
 
@@ -54,6 +54,42 @@ site's publishable key, exactly as the stock Mobeus starter does. Use sample dat
 - **Henkel ServiceNow helpers** (incident watchdogs, call capture, auto-rendered incident cards) are in the code but
   switched off (`SERVICENOW_FEATURES = false` in `src/lib/stores/voice-session-store.ts`).
 - The Mobeus Studio theming and AirVision features of the stock starter are not in this build.
+
+## Counselor tools merged from Venkat's build (2026-11-19)
+
+- **Tools** (`src/site-functions/register.ts`), sent with the session request so Natalie can call them by name:
+  `getCaseload`, `getStudentRisk`, `planOutreach`, `contactStudent`, `findMeetingSlots`, `addToCalendar`, `setLocale`.
+  If the platform refuses the list, the site retries without it. **Needs Natalie prompt v1.3.**
+- **Data** is in `src/data/advisors.ts` and mirrors `csu-teles/shared/demo-world.md` and the caseload section of
+  Natalie's prompt: Jordan Rivera, 40 advisees, 5 flagged (Maria Chen, Daniel Okafor, Sofia Ramirez, Ethan Nguyen,
+  Aaliyah Johnson), and Jordan's open slots for June 22 to 25, 2027. Change demo-world first, then this file.
+  Any other name returns "not on this caseload".
+- **Cards** (`src/components/cards/AdvisorCards.tsx`, added next to the existing ones): `caseload-list`,
+  `student-brief`, `outreach-plan`, `slot-picker`. Drawn only by the tools, never written by the model. Taps send
+  their sentence to Natalie. Card text is in en, es, zh, tl, vi, de; student data stays in English.
+- **Messages are queued, not sent.** `planOutreach` draws a draft on the channel the student agreed to (email
+  only when texting is not allowed) and sends nothing. After Jordan says yes, `contactStudent` puts it in this
+  browser tab's outbox with a reference (`CSUAC-XXXXXX`) and the card shows "Queued". This static site has no
+  server, so nothing reaches a student.
+- **Calendar:** once Jordan picks a slot to propose, `addToCalendar` offers an `.ics` download and a Google Calendar
+  link for a "Proposed: advising with <student>" hold on Jordan's own calendar, pending the student's yes.
+  Nothing is booked and the student is not invited.
+- Not merged: Venkat's `?ac=` advisor code, server outbound and calendar routes, the "SIM" send path, his
+  `csumock.edu` contact details, his verification-code door (staff are already signed in), his plaintext demo
+  login, his drawn CSU mark, and his page that dropped the chat-only option.
+
+## Look and name (2026-11-19, same as the student site)
+
+- The product is called **Academic Counselor**, shown with a **CSU demo** tag. "Student Engagement Platform" is no
+  longer used on this site.
+- **Logo:** `public/brand/csu-mark.png`, the red CSU block from the logo on calstate.edu (config.js
+  `BRAND_LOGO_URL`). CSU brand rules say not to alter their logo, so ask before showing this crop to CSU people.
+- **Colours:** header bar CSU red `#CF102D`; light grey page `--csu-page`; grey card panels `--csu-card` with white
+  boxes inside.
+- **Wording:** short, plain sentences, page text in six languages (`src/lib/locales.ts`, `dict()`); no "simulated"
+  or "(demo)" on any card.
+- **Taps interrupt Natalie** like speech (sent on LiveKit's `lk.chat`), info-card buttons send their sentence, the
+  avatar column follows the screen height, and the home content is centred vertically.
 
 ## Build
 

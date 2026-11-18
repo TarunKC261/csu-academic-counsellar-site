@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { siteFunctionManifestForWire } from '@/site-functions/register';
 import {
   Room,
   RoomEvent,
@@ -32,7 +33,7 @@ import { config } from '@/lib/runtime-config';
 // CSU build: the Henkel ServiceNow helpers (incident list/absence watchdogs, the
 // self-service question-card fallback, incident auto-render, call capture) watch
 // the conversation for IT-ticket phrasing and inject cards or nudges. They would
-// misfire on Val's student conversations, so they are switched off here. The code
+// misfire on Natalie's advising conversations, so they are switched off here. The code
 // stays in place so the two builds remain easy to compare.
 const SERVICENOW_FEATURES = false;
 
@@ -379,12 +380,48 @@ function partOfDay(): string {
 }
 
 // CSU: two tails. With a demo persona configured (config.js GREETING_NAME, e.g.
-// 'Maria') the greeting opens her story exactly as the Val prompt expects; with
-// none, a general welcome for whoever signed in.
+// 'Jordan') the greeting opens the week exactly as the Natalie prompt expects;
+// with none, a general welcome for whoever signed in.
+/**
+ * CSU (merged from Venkat's build): send the site-function manifest with the
+ * session request, so the platform gives Natalie the counselor tools
+ * (getCaseload, getStudentRisk, planOutreach, findMeetingSlots, contactStudent,
+ * addToCalendar, setLocale) as named tools. If the platform refuses the request
+ * (400/422, e.g. a stricter manifest schema), retry once WITHOUT the manifest,
+ * so the worst case is "Natalie has no tools", never "Natalie does not connect".
+ */
+/** CSU: send button taps on LiveKit's chat input so they interrupt Natalie like speech (see tellAgent). */
+const TAPS_INTERRUPT = true;
+
+async function postWithManifest(
+  url: string,
+  credentials: RequestCredentials,
+  base: Record<string, unknown>,
+): Promise<Response> {
+  const init = (body: Record<string, unknown>): RequestInit => ({
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials,
+    body: JSON.stringify(body),
+  });
+  let manifest: ReturnType<typeof siteFunctionManifestForWire> = [];
+  try {
+    manifest = siteFunctionManifestForWire();
+  } catch {
+    manifest = [];
+  }
+  if (manifest.length === 0) return fetch(url, init(base));
+  logEvent('network', `session request carries ${manifest.length} site functions`);
+  const first = await fetch(url, init({ ...base, siteFunctionManifest: manifest }));
+  if (first.status !== 400 && first.status !== 422) return first;
+  logEvent('error', `session request refused with the site-function manifest (${first.status}); retrying without it`);
+  return fetch(url, init(base));
+}
+
 const GREETING_TAIL_PERSONA =
-  "your advising assistant on the CSU Student Engagement Platform. Five of your students need a look this week. Want to see who to start with?";
+  "your advising assistant. Five of your students need a look this week. Shall I show you who to start with?";
 const GREETING_TAIL_GENERAL =
-  "your advising assistant on the CSU Student Engagement Platform. I can show your caseload, explain why a student is flagged and draft the outreach. Where would you like to start?";
+  "your advising assistant. I can show your caseload, tell you why a student is flagged and draft a message. Where would you like to start?";
 function greetingTail(): string {
   try {
     return config.greetingName() ? GREETING_TAIL_PERSONA : GREETING_TAIL_GENERAL;
@@ -529,12 +566,7 @@ export const useVoiceSessionStore = create<VoiceSessionState>((set, get) => ({
 
       // Call prepare endpoint - creates room, returns token (no agent dispatch)
       logEvent('network', 'POST /api/widget/session/prepare - request');
-      const response = await fetch(`${widgetHost}/api/widget/session/prepare`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: be.credentials,
-        body: JSON.stringify(be.useKey ? { apiKey } : {}),
-      });
+      const response = await postWithManifest(`${widgetHost}/api/widget/session/prepare`, be.credentials, be.useKey ? { apiKey } : {});
 
       if (!response.ok) {
         console.warn('Pre-warm prepare failed:', response.status);
@@ -762,12 +794,7 @@ export const useVoiceSessionStore = create<VoiceSessionState>((set, get) => ({
 
       // Create session via widget API (original flow: room + agent dispatch together)
       logEvent('network', 'POST /api/widget/session - request (SLOW path, no prewarm)');
-      const response = await fetch(`${widgetHost}/api/widget/session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: be.credentials,
-        body: JSON.stringify(be.useKey ? { apiKey } : {}),
-      });
+      const response = await postWithManifest(`${widgetHost}/api/widget/session`, be.credentials, be.useKey ? { apiKey } : {});
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -1521,8 +1548,28 @@ export const useVoiceSessionStore = create<VoiceSessionState>((set, get) => ({
         ],
       }));
 
-      // Send RPC to agent and return parsed response
       logTellAgent(trimmed);
+
+      // CSU (2026-11-18): a tap must interrupt Natalie the way speaking does.
+      // The agent's `tellAgent` RPC only appends a user turn and calls
+      // generate_reply, which QUEUES behind whatever she is saying, so a button
+      // tapped mid-sentence waited for her to finish. LiveKit's own chat input
+      // (`lk.chat`, the path the chat panel already uses) runs the agent
+      // session's default text handler: interrupt() first, then reply to the
+      // text, exactly like a user starting to talk. So taps go that way now.
+      // If sending on lk.chat fails, fall back to the old RPC (never lose a tap).
+      if (TAPS_INTERRUPT) {
+        try {
+          await room.localParticipant.sendText(trimmed, { topic: 'lk.chat' });
+          logEvent('rpc', `tellAgent via lk.chat (interrupts like speech): "${trimmed.slice(0, 60)}"`);
+          logTellAgentResponse(trimmed, { success: true });
+          return { success: true };
+        } catch (err) {
+          logEvent('error', 'tellAgent: lk.chat send failed, falling back to the tellAgent RPC', String(err));
+        }
+      }
+
+      // Send RPC to agent and return parsed response
       const response = await room.localParticipant.performRpc({
         destinationIdentity: agentParticipant.identity,
         method: 'tellAgent',

@@ -6,11 +6,11 @@ import { ConsentGate } from '@/components/privacy/ConsentGate';
 
 // Pinned (not NEXT_PUBLIC_AGENT_NAME from the dashboard) so the tab title and
 // link previews always read as the product, whatever the agent is called there.
-const agentName = 'CSU Student Engagement Platform · Advisor';
+const agentName = 'Academic Counselor · CSU demo';
 
 export const metadata: Metadata = {
   title: agentName,
-  description: `${agentName}: an AI assistant that helps CSU academic advisors find and reach students who need support.`,
+  description: 'Helps CSU academic advisors see which students need them and reach out. A CSU demo.',
 };
 
 export default function RootLayout({
