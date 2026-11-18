@@ -59,3 +59,6 @@ export { RelationshipCard } from './RelationshipCard';
 export { CountryCard } from './CountryCard';
 export { DataClusterCard } from './DataClusterCard';
 export { CalendarCard } from './CalendarCard';
+
+// Counselor cards (ported from Venkat's build)
+export { CaseloadListCard, StudentBriefCard, OutreachPlanCard, SlotPickerCard } from './AdvisorCards';

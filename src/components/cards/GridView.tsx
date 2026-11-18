@@ -31,6 +31,8 @@ import {
     DecisionCard, DelegationCard,
     // Cross-Domain Intelligence (4)
     RelationshipCard, CountryCard, DataClusterCard, CalendarCard,
+    // Counselor cards (ported from Venkat's build)
+    CaseloadListCard, StudentBriefCard, OutreachPlanCard, SlotPickerCard,
 } from '@/components/cards';
 
 /* ═══════════════════════════════════════════════════════════
@@ -100,6 +102,11 @@ const CARD_MAP: Record<string, React.FC<any>> = {
     'country-card': CountryCard,
     'data-cluster': DataClusterCard,
     'calendar': CalendarCard,
+    // Counselor cards (ported from Venkat's build)
+    'caseload-list': CaseloadListCard,
+    'student-brief': StudentBriefCard,
+    'outreach-plan': OutreachPlanCard,
+    'slot-picker': SlotPickerCard,
     // Aliases — common hallucinated type names
     'profile-roster': OrgRoster,
     'area-chart': LineChart,
@@ -127,6 +134,7 @@ const CARD_SIZE: Record<string, number> = {
     'kb-suggestion': 3,
     'resolve-page': 3,
     'question-card': 3,
+    'caseload-list': 3, 'student-brief': 3, 'outreach-plan': 3, 'slot-picker': 3,
     'survey-card': 3,
     'calls-list-card': 3,
     'lookup-card': 3,
@@ -175,7 +183,7 @@ function renderCard(card: CardDef, index: number) {
     // cascade feel while the whole grid settles inside half a second.
     const enterDelay = `${Math.min(index, 5) * 40}ms`;
     // Card types that always render without the glass box wrapper
-    const BORDERLESS = new Set(['kpi-strip', 'incident-card', 'incident-draft', 'question-card', 'survey-card', 'calls-list-card', 'lookup-card', 'kb-suggestion', 'resolve-page', 'product-carousel', 'product-categories', 'product-detail']);
+    const BORDERLESS = new Set(['kpi-strip', 'incident-card', 'incident-draft', 'question-card', 'survey-card', 'calls-list-card', 'lookup-card', 'kb-suggestion', 'resolve-page', 'product-carousel', 'product-categories', 'product-detail', 'caseload-list', 'student-brief', 'outreach-plan', 'slot-picker']);
     // These card types get the glass border + bg but NO internal padding (flush fill)
     const FLUSH_ROUNDED = new Set(['image-card', 'alert']);
     if (BORDERLESS.has(card.type) || card.borderless) return content;

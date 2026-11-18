@@ -37,7 +37,8 @@ type ConfigKey =
     | 'BRAND_LOGO_URL'
     | 'PASSWORD_LOGIN_ENABLED'
     | 'ADMIN_USERNAME'
-    | 'ADMIN_PASSWORD_HASH';
+    | 'ADMIN_PASSWORD_HASH'
+    | 'VERIFY_GATE';
 
 declare global {
     interface Window {
@@ -118,10 +119,14 @@ export const config = {
     // greeting matches the student in the prompt; '' = the signed-in first name.
     greetingName: () => resolve('GREETING_NAME', undefined, ''),
     // CSU: official logo file (e.g. '/brand/csu-wordmark.svg'). '' = text label.
-    brandLogoUrl: () => resolve('BRAND_LOGO_URL', undefined, ''),
+    brandLogoUrl: () => resolve('BRAND_LOGO_URL', undefined, '/brand/csu-mark.png'),
     // CSU: username + password sign-in for people without SSO. Only a salted
     // PBKDF2 hash is ever configured (see lib/auth/password-login.ts).
     passwordLoginEnabled: () => resolve('PASSWORD_LOGIN_ENABLED', undefined, 'false').toLowerCase() === 'true',
     adminUsername: () => resolve('ADMIN_USERNAME', undefined, ''),
     adminPasswordHash: () => resolve('ADMIN_PASSWORD_HASH', undefined, ''),
+    // Student one-time-code door (merged from Venkat's build). 'mock' (default) =
+    // the code is made and checked in the browser and shown as a simulated text
+    // message; 'off' = no door. There is no real SMS in this static build.
+    verifyGate: () => resolve('VERIFY_GATE', undefined, 'mock').trim().toLowerCase(),
 };

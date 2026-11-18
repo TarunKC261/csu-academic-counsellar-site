@@ -29,7 +29,7 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
     {
         label: 'About this demo',
         body: [
-            'The CSU Student Engagement Platform (advisor view) is a demonstration of an AI assistant for academic advisors at the California State University. It is not an official CSU service, and nothing you do here sends a message to a student, books an appointment or changes a record.',
+            'This is a demo of Academic Counselor, an AI assistant for academic advisors at the California State University. It is not an official CSU service. Nothing you do here sends a message to a student, books an appointment or changes a record.',
         ],
     },
     {
